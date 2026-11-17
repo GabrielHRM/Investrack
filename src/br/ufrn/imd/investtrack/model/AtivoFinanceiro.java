@@ -91,8 +91,10 @@ public abstract class AtivoFinanceiro{
         return Math.max(0.0, calcularLucroPrejuizo()) * aliquota;
     }
 
+    // Projeta o rendimento para os proximos meses, conforme a regra de cada tipo de ativo
     public abstract double calcularRendimentoProjetado(int meses);
 
+    // recebe a variacao percentual e retorna uma mensagem descrevendo o cenario de, por exemplo, alta ou queda de um ativo
     public abstract String avaliarCenario(double variacaoPct);
 
     public String getTicker() {
@@ -113,6 +115,43 @@ public abstract class AtivoFinanceiro{
 
     public synchronized double getCotacaoAtual() {
         return cotacaoAtual;
+    }
+
+
+    protected static double validarNaoNegativo(double valor, String campo) {
+        if (!Double.isFinite(valor) || valor < 0.0) {
+            throw new IllegalArgumentException(campo + " deve ser um numero nao negativo e finito.");
+        }
+        return valor;
+    }
+
+    protected static void validarMeses(int meses) {
+        if (meses < 0) {
+            throw new IllegalArgumentException("O numero de meses nao pode ser negativo.");
+        }
+    }
+
+    protected static double validarVariacaoPct(double variacaoPct) {
+        if (!Double.isFinite(variacaoPct)) {
+            throw new IllegalArgumentException("A variacao percentual deve ser finita.");
+        }
+        return variacaoPct;
+    }
+
+    private static String validarTicker(String ticker) {
+        String valor = Objects.requireNonNull(ticker, "ticker nao pode ser nulo").trim();
+        if (valor.isEmpty()) {
+            throw new IllegalArgumentException("Ticker nao pode ficar vazio.");
+        }
+        return valor.toUpperCase(Locale.ROOT);
+    }
+
+    private static String validarNome(String nome) {
+        String valor = Objects.requireNonNull(nome, "nome nao pode ser nulo").trim();
+        if (valor.isEmpty()) {
+            throw new IllegalArgumentException("Nome nao pode ficar vazio.");
+        }
+        return valor;
     }
 
 }
