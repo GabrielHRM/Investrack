@@ -125,6 +125,13 @@ public abstract class AtivoFinanceiro{
         return valor;
     }
 
+    protected static double validarPositivo(double valor, String campo) {
+        if (!Double.isFinite(valor) || valor <= 0.0) {
+            throw new IllegalArgumentException(campo + " deve ser um numero positivo e finito.");
+        }
+        return valor;
+    }
+
     protected static void validarMeses(int meses) {
         if (meses < 0) {
             throw new IllegalArgumentException("O numero de meses nao pode ser negativo.");
