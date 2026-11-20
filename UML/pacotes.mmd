@@ -1,0 +1,42 @@
+---
+title: InvestTrack - Dependência entre pacotes (o Main, que monta tudo, foi omitido)
+---
+flowchart TD
+    ui["ui<br/>DashboardFrame, CarteiraTableModel, MiniGraficoRenderer"]
+    service["service<br/>CarteiraService, CalculadoraIRService, MonitorMercadoService"]
+    observer["observer<br/>DetectorVolatilidade, AlertaPrecoAlvo, HistoricoOscilacoes,<br/>ReceptorAlerta, Alerta, NivelAlerta"]
+    api["api<br/>ProvedorApiReal, ProvedorSimulado"]
+    factory["factory<br/>AtivoFactory"]
+    repository["repository<br/>CarteiraRepository"]
+    model["model<br/>AtivoFinanceiro, Acao, Criptomoeda, RendaFixa, TipoAtivo"]
+    interfaces["interfaces<br/>Tributavel, ObservadorMercado, ProvedorCotacao"]
+    exception["exception<br/>TickerInvalido, SaldoInsuficiente,<br/>AtivoNaoEncontrado, CotacaoIndisponivel"]
+
+    ui --> service
+    ui --> observer
+    ui --> model
+    ui --> interfaces
+
+    service --> factory
+    service --> repository
+    service --> model
+    service --> interfaces
+    service --> exception
+
+    observer --> repository
+    observer --> model
+    observer --> interfaces
+
+    api --> interfaces
+    api --> exception
+
+    factory --> model
+    factory --> exception
+
+    repository --> model
+    repository --> interfaces
+
+    model --> interfaces
+    model --> exception
+
+    interfaces --> exception

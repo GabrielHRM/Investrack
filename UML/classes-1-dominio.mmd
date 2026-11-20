@@ -1,0 +1,144 @@
+---
+title: InvestTrack - Diagrama de Classes (parte 1) - Domínio da carteira
+---
+classDiagram
+    direction TB
+
+    namespace model {
+        class AtivoFinanceiro {
+            <<abstract>>
+            - ticker: String
+            - nome: String
+            - quantidade: double
+            - precoMedio: double
+            - cotacaoAtual: double
+            + AtivoFinanceiro(ticker: String, nome: String, quantidade: double, precoMedio: double)
+            + atualizarCotacao(novaCotacao: double) void
+            + comprar(quantidade: double, preco: double) void
+            + vender(quantidade: double) void
+            + calcularValorAtual() double
+            + calcularLucroPrejuizo() double
+            + calcularRendimentoProjetado(meses: int)* double
+            + avaliarCenario(variacaoPct: double)* String
+        }
+        class Acao {
+            - dividendYieldAnual: double
+            + Acao(ticker: String, nome: String, quantidade: double, precoMedio: double, dividendYieldAnual: double)
+            + calcularRendimentoProjetado(meses: int) double
+            + avaliarCenario(variacaoPct: double) String
+            + calcularImposto() double
+        }
+        class Criptomoeda {
+            + Criptomoeda(ticker: String, nome: String, quantidade: double, precoMedio: double)
+            + calcularRendimentoProjetado(meses: int) double
+            + avaliarCenario(variacaoPct: double) String
+            + calcularImposto() double
+        }
+        class RendaFixa {
+            - taxaAnual: double
+            - dataAplicacao: LocalDate
+            - dataVencimento: LocalDate
+            + RendaFixa(nome: String, valor: double, taxaAnual: double, dataVencimento: LocalDate)
+            + investir(valor: double) void
+            + resgatar(valor: double) void
+            + calcularAliquotaIR() double
+            + isAntesDoVencimento() boolean
+            + calcularRendimentoProjetado(meses: int) double
+            + avaliarCenario(variacaoPct: double) String
+            + calcularImposto() double
+        }
+        class TipoAtivo {
+            <<enumeration>>
+            ACAO
+            CRIPTOMOEDA
+            RENDA_FIXA
+        }
+    }
+
+    namespace interfaces {
+        class Tributavel {
+            <<interface>>
+            + calcularImposto() double
+        }
+    }
+
+    namespace factory {
+        class AtivoFactory {
+            + criarRendaFixa(nome: String, valor: double, taxaAnual: double, vencimento: LocalDate)$ RendaFixa
+            + criarAtivo(tipo: TipoAtivo, ticker: String, nome: String, qtd: double, preco: double)$ AtivoFinanceiro
+            - validarTicker(tipo: TipoAtivo, ticker: String)$ void
+        }
+    }
+
+    namespace repository {
+        class CarteiraRepository {
+            <<Singleton>>
+            - instancia: CarteiraRepository$
+            - ativos: ConcurrentHashMap~String, AtivoFinanceiro~
+            - CarteiraRepository()
+            + getInstancia()$ CarteiraRepository
+            + salvar(ativo: AtivoFinanceiro) void
+            + buscar(ticker: String) AtivoFinanceiro
+            + remover(ticker: String) void
+            + listarTodos() List~AtivoFinanceiro~
+            + listarTickersMonitorados() Set~String~
+            + listarTributaveis() List~Tributavel~
+        }
+    }
+
+    namespace service {
+        class CarteiraService {
+            - repositorio: CarteiraRepository
+            + CarteiraService(repositorio: CarteiraRepository)
+            + comprar(tipo: TipoAtivo, ticker: String, nome: String, qtd: double, preco: double) void
+            + vender(ticker: String, qtd: double) void
+            + investirRendaFixa(nome: String, valor: double, taxaAnual: double, vencimento: LocalDate) void
+            + resgatarRendaFixa(nome: String, valor: double) String
+            + calcularPatrimonioTotal() double
+            + calcularLucroPrejuizoTotal() double
+        }
+        class CalculadoraIRService {
+            + calcularImpostoTotal(itens: List~Tributavel~) double
+            + gerarRelatorio(itens: List~Tributavel~) String
+        }
+    }
+
+    namespace exception {
+        class TickerInvalidoException
+        class SaldoInsuficienteException
+        class AtivoNaoEncontradoException
+        class CotacaoIndisponivelException
+    }
+
+    class Exception {
+        <<Java>>
+    }
+
+    %% heranca: linha continua com triangulo vazado
+    AtivoFinanceiro <|-- Acao
+    AtivoFinanceiro <|-- Criptomoeda
+    AtivoFinanceiro <|-- RendaFixa
+    Exception <|-- TickerInvalidoException
+    Exception <|-- SaldoInsuficienteException
+    Exception <|-- AtivoNaoEncontradoException
+    Exception <|-- CotacaoIndisponivelException
+
+    %% implementacao: linha tracejada com triangulo vazado
+    Tributavel <|.. Acao
+    Tributavel <|.. Criptomoeda
+    Tributavel <|.. RendaFixa
+
+    %% agregacao: os ativos sao criados fora (AtivoFactory) e entram por salvar(ativo)
+    CarteiraRepository "0..1" o-- "*" AtivoFinanceiro : ativos
+
+    %% associacao: atributo recebido no construtor
+    CarteiraService --> "1" CarteiraRepository : repositorio
+
+    %% relacoes momentaneas (parametro, variavel local ou retorno): linha tracejada
+    CarteiraService ..> AtivoFactory : pede a criação
+    AtivoFactory ..> AtivoFinanceiro : cria e devolve
+    AtivoFactory ..> TipoAtivo
+    AtivoFactory ..> TickerInvalidoException : lança
+    AtivoFinanceiro ..> SaldoInsuficienteException : lança em vender()
+    CarteiraService ..> AtivoNaoEncontradoException : lança
+    CalculadoraIRService ..> Tributavel : percorre a lista

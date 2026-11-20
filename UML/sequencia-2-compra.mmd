@@ -1,0 +1,40 @@
+---
+title: InvestTrack - Diagrama de Sequência 2 - Compra de um ativo
+---
+sequenceDiagram
+    autonumber
+    actor U as Usuário
+    participant DASH as DashboardFrame
+    participant SERV as CarteiraService
+    participant REP as CarteiraRepository
+    participant FAB as AtivoFactory
+    participant AT as ativo<br/>«AtivoFinanceiro»
+
+    U->>DASH: clica em "Comprar" e preenche tipo, ticker, nome, quantidade e preço
+    DASH->>SERV: comprar(tipo, ticker, nome, qtd, preco)
+    SERV->>REP: buscar(ticker)
+
+    alt o ativo já está na carteira
+        REP-->>SERV: ativo
+        SERV->>AT: comprar(qtd, preco)
+        AT->>AT: soma a quantidade e recalcula o precoMedio
+    else ativo novo
+        REP-->>SERV: null
+        SERV->>FAB: criarAtivo(tipo, ticker, nome, qtd, preco)
+        FAB->>FAB: validarTicker(tipo, ticker)
+        alt ticker válido
+            FAB->>AT: new Acao(...) ou new Criptomoeda(...)
+            FAB-->>SERV: ativo (devolvido como AtivoFinanceiro)
+            SERV->>REP: salvar(ativo)
+        else ticker inválido
+            FAB-->>SERV: lança TickerInvalidoException
+            SERV-->>DASH: repassa TickerInvalidoException
+            DASH-->>U: JOptionPane com a mensagem de erro
+        end
+    end
+
+    opt compra feita sem erro
+        DASH->>DASH: modeloTabela.atualizar(...) e atualizarResumo()
+        DASH-->>U: tabela e patrimônio atualizados
+        Note over REP: no próximo ciclo, listarTickersMonitorados() já inclui o ticker novo
+    end

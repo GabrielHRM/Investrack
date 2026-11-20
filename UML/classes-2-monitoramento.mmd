@@ -1,0 +1,205 @@
+---
+title: InvestTrack - Diagrama de Classes (parte 2) - Monitoramento, alertas e interface
+---
+classDiagram
+    direction TB
+
+    namespace interfaces {
+        class ProvedorCotacao {
+            <<interface>>
+            + buscarCotacaoAtual(ticker: String) double
+        }
+        class ObservadorMercado {
+            <<interface>>
+            + aoAtualizarCotacao(ticker: String, cotacaoAnterior: double, cotacaoAtual: double) void
+        }
+    }
+
+    namespace api {
+        class ProvedorApiReal {
+            - cliente: HttpClient
+            - gson: Gson
+            + ProvedorApiReal()
+            + buscarCotacaoAtual(ticker: String) double
+            - buscarNaBinance(ticker: String) double
+            - buscarNaBrapi(ticker: String) double
+            - buscarNaAwesome(par: String) double
+        }
+        class ProvedorSimulado {
+            - precos: Map~String, Double~
+            - aleatorio: Random
+            + ProvedorSimulado(semente: long)
+            + definirPreco(ticker: String, preco: double) void
+            + buscarCotacaoAtual(ticker: String) double
+        }
+    }
+
+    namespace service {
+        class MonitorMercadoService {
+            - INDICADORES_CAMBIO: List~String~$
+            - INTERVALO_SEGUNDOS: int$
+            - provedor: ProvedorCotacao
+            - repositorio: CarteiraRepository
+            - observadores: List~ObservadorMercado~
+            - ultimasCotacoes: Map~String, Double~
+            - agendador: ScheduledExecutorService
+            + MonitorMercadoService(provedor: ProvedorCotacao, repositorio: CarteiraRepository)
+            + adicionarObservador(o: ObservadorMercado) void
+            + removerObservador(o: ObservadorMercado) void
+            + setProvedor(provedor: ProvedorCotacao) void
+            + iniciar() void
+            + parar() void
+            + executarCiclo() void
+            - notificarObservadores(ticker: String, anterior: double, atual: double) void
+        }
+    }
+
+    namespace observer {
+        class ReceptorAlerta {
+            <<interface>>
+            + receberAlerta(alerta: Alerta) void
+        }
+        class Alerta {
+            - ticker: String
+            - mensagem: String
+            - nivel: NivelAlerta
+            - horario: LocalDateTime
+            + Alerta(ticker: String, mensagem: String, nivel: NivelAlerta)
+        }
+        class NivelAlerta {
+            <<enumeration>>
+            INFO
+            ATENCAO
+            CRITICO
+        }
+        class DetectorVolatilidade {
+            - limitePct: double
+            - repositorio: CarteiraRepository
+            - receptor: ReceptorAlerta
+            + DetectorVolatilidade(limitePct: double, repositorio: CarteiraRepository, receptor: ReceptorAlerta)
+            + aoAtualizarCotacao(ticker: String, cotacaoAnterior: double, cotacaoAtual: double) void
+        }
+        class AlertaPrecoAlvo {
+            - alvos: Map~String, Double~
+            - receptor: ReceptorAlerta
+            + AlertaPrecoAlvo(receptor: ReceptorAlerta)
+            + definirAlvo(ticker: String, precoAlvo: double) void
+            + aoAtualizarCotacao(ticker: String, cotacaoAnterior: double, cotacaoAtual: double) void
+        }
+        class HistoricoOscilacoes {
+            - MAX_PONTOS: int$
+            - historico: Map~String, Deque~Double~~
+            + aoAtualizarCotacao(ticker: String, cotacaoAnterior: double, cotacaoAtual: double) void
+            + listarHistorico(ticker: String) List~Double~
+        }
+    }
+
+    namespace model {
+        class AtivoFinanceiro {
+            <<abstract>>
+            + avaliarCenario(variacaoPct: double)* String
+        }
+    }
+
+    namespace repository {
+        class CarteiraRepository {
+            <<Singleton>>
+            + listarTickersMonitorados() Set~String~
+            + buscar(ticker: String) AtivoFinanceiro
+        }
+    }
+
+    namespace exception {
+        class CotacaoIndisponivelException
+    }
+
+    namespace ui {
+        class DashboardFrame {
+            - carteiraService: CarteiraService
+            - monitor: MonitorMercadoService
+            - historico: HistoricoOscilacoes
+            - modeloTabela: CarteiraTableModel
+            - tabela: JTable
+            - listaAlertas: DefaultListModel~String~
+            - botaoModoSimulado: JToggleButton
+            + DashboardFrame(carteiraService: CarteiraService, monitor: MonitorMercadoService, historico: HistoricoOscilacoes)
+            + aoAtualizarCotacao(ticker: String, cotacaoAnterior: double, cotacaoAtual: double) void
+            + receberAlerta(alerta: Alerta) void
+            - alternarProvedor() void
+            - abrirDialogoCompra() void
+            - abrirDialogoVenda() void
+            - atualizarResumo() void
+        }
+        class CarteiraTableModel {
+            - ativos: List~AtivoFinanceiro~
+            + atualizar(ativos: List~AtivoFinanceiro~) void
+            + getRowCount() int
+            + getColumnCount() int
+            + getValueAt(linha: int, coluna: int) Object
+        }
+        class MiniGraficoRenderer {
+            - historico: HistoricoOscilacoes
+            + MiniGraficoRenderer(historico: HistoricoOscilacoes)
+            + getTableCellRendererComponent(...) Component
+            # paintComponent(g: Graphics) void
+        }
+    }
+
+    class Main {
+        + main(args: String[])$ void
+    }
+    class JFrame {
+        <<Swing>>
+    }
+    class AbstractTableModel {
+        <<Swing>>
+    }
+    class JPanel {
+        <<Swing>>
+    }
+    class TableCellRenderer {
+        <<interface>>
+    }
+
+    %% implementacao (linha tracejada com triangulo vazado)
+    ProvedorCotacao <|.. ProvedorApiReal
+    ProvedorCotacao <|.. ProvedorSimulado
+    ObservadorMercado <|.. DetectorVolatilidade
+    ObservadorMercado <|.. AlertaPrecoAlvo
+    ObservadorMercado <|.. HistoricoOscilacoes
+    ObservadorMercado <|.. DashboardFrame
+    ReceptorAlerta <|.. DashboardFrame
+    TableCellRenderer <|.. MiniGraficoRenderer
+
+    %% heranca (linha continua com triangulo vazado)
+    JFrame <|-- DashboardFrame
+    AbstractTableModel <|-- CarteiraTableModel
+    JPanel <|-- MiniGraficoRenderer
+
+    %% Strategy: o provedor e um atributo trocado por setProvedor()
+    MonitorMercadoService --> "1" ProvedorCotacao : provedor
+    %% Observer: os observadores sao criados fora e entram por adicionarObservador()
+    MonitorMercadoService "1" o-- "*" ObservadorMercado : observadores
+    MonitorMercadoService --> "1" CarteiraRepository : repositorio
+
+    %% associacoes (atributos recebidos no construtor)
+    DetectorVolatilidade --> "1" ReceptorAlerta : receptor
+    DetectorVolatilidade --> "1" CarteiraRepository : repositorio
+    AlertaPrecoAlvo --> "1" ReceptorAlerta : receptor
+    Alerta --> "1" NivelAlerta : nivel
+    DashboardFrame --> "1" MonitorMercadoService : monitor
+    DashboardFrame --> "1" HistoricoOscilacoes : historico
+    MiniGraficoRenderer --> "1" HistoricoOscilacoes : historico
+
+    %% composicao: o DashboardFrame faz o new do modelo da tabela
+    DashboardFrame "1" *-- "1" CarteiraTableModel : modeloTabela
+    %% agregacao: a lista de ativos vem de fora por atualizar(ativos)
+    CarteiraTableModel "*" o-- "*" AtivoFinanceiro : ativos
+
+    %% relacoes momentaneas (linha tracejada)
+    DetectorVolatilidade ..> AtivoFinanceiro : avaliarCenario()
+    DetectorVolatilidade ..> Alerta : cria
+    AlertaPrecoAlvo ..> Alerta : cria
+    DashboardFrame ..> MiniGraficoRenderer : cria
+    ProvedorCotacao ..> CotacaoIndisponivelException : lança
+    Main ..> DashboardFrame : cria e conecta tudo

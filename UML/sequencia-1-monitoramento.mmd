@@ -1,0 +1,62 @@
+---
+title: InvestTrack - Diagrama de Sequência 1 - Ciclo de monitoramento (a cada 15 segundos)
+---
+sequenceDiagram
+    autonumber
+    participant AG as agendador<br/>ScheduledExecutorService
+    participant MON as MonitorMercadoService
+    participant REP as CarteiraRepository
+    participant PROV as provedor<br/>«ProvedorCotacao»
+    participant API as API externa<br/>(Binance / brapi / AwesomeAPI)
+    participant AT as ativo<br/>«AtivoFinanceiro»
+    participant HIST as HistoricoOscilacoes
+    participant DET as DetectorVolatilidade
+    participant DASH as DashboardFrame
+    participant EDT as Swing (EDT)
+
+    Note over AG,MON: roda numa thread separada, para a janela não travar
+    AG->>MON: executarCiclo()
+    MON->>REP: listarTickersMonitorados()
+    REP-->>MON: tickers da carteira (ex.: PETR4, BTCBRL)
+    Note right of MON: + INDICADORES_CAMBIO (USD-BRL, EUR-BRL)
+
+    loop para cada ticker
+        MON->>PROV: buscarCotacaoAtual(ticker)
+        alt ProvedorApiReal
+            PROV->>API: GET via HttpClient
+            API-->>PROV: JSON
+            Note right of PROV: o Gson converte o JSON
+        else ProvedorSimulado (modo offline / testes)
+            PROV->>PROV: gera preço com Random
+        end
+
+        alt cotação obtida
+            PROV-->>MON: cotacaoAtual
+            opt ticker está na carteira
+                MON->>REP: buscar(ticker)
+                REP-->>MON: ativo
+                MON->>AT: atualizarCotacao(cotacaoAtual)
+            end
+            MON->>MON: notificarObservadores(ticker, anterior, atual)
+
+            Note over MON,DASH: Observer: o monitor só conhece a interface ObservadorMercado
+            MON->>HIST: aoAtualizarCotacao(ticker, anterior, atual)
+            HIST->>HIST: guarda o ponto (para o mini-gráfico)
+
+            MON->>DET: aoAtualizarCotacao(ticker, anterior, atual)
+            opt variação maior que limitePct
+                DET->>REP: buscar(ticker)
+                REP-->>DET: ativo
+                DET->>AT: avaliarCenario(variacaoPct)
+                AT-->>DET: recomendação (cada tipo de ativo responde do seu jeito)
+                DET->>DASH: receberAlerta(new Alerta(...))
+            end
+
+            MON->>DASH: aoAtualizarCotacao(ticker, anterior, atual)
+            DASH->>EDT: SwingUtilities.invokeLater(...)
+            EDT->>DASH: atualiza tabela, mini-gráficos e resumo
+        else falha na API (CotacaoIndisponivelException)
+            PROV-->>MON: lança CotacaoIndisponivelException
+            Note right of MON: mantém a última cotação e segue para o próximo ticker
+        end
+    end
