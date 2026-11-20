@@ -582,5 +582,3 @@ lib/                       gson.jar e junit-platform-console-standalone.jar
 bin/                       .class gerados (no .gitignore)
 doc/                       JavaDoc gerado (no .gitignore)
 ```
-
-Os comandos exatos de compilação, execução e JavaDoc vão no `README.md` do projeto.
