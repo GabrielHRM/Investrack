@@ -18,11 +18,11 @@ import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Tela principal da carteira. Usa Swing para janelas, tabela, botoes, caixas de dialogo e timer;
- * AWT para cores e layouts; NumberFormat e Locale para valores em pt-BR.
- * CarteiraService executa compras e vendas, e CarteiraRepository fornece os ativos exibidos.
- */
+/*
+Tela principal da carteira. Usa Swing para janelas, tabela, botoes, caixas de dialogo e timer;
+AWT para cores e layouts; NumberFormat e Locale para valores em pt-BR.
+CarteiraService executa compras e vendas, e CarteiraRepository fornece os ativos exibidos.
+*/
 public final class DashboardFrame extends JFrame {
 	private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
 	private static final Color FUNDO = new Color(12, 12, 12);

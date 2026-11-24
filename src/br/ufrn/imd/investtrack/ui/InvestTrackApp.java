@@ -7,10 +7,10 @@ import java.awt.Color;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
-/**
- * Ponto de entrada. SwingUtilities inicia a interface na thread de eventos do Swing;
- * UIManager configura o tema, e Color do AWT define a paleta escura.
- */
+/*
+Ponto de entrada. SwingUtilities inicia a interface na thread de eventos do Swing;
+UIManager configura o tema, e Color do AWT define a paleta escura.
+*/
 public final class InvestTrackApp {
 	// Classe utilitaria; a aplicação inicia pelo método main.
 	private InvestTrackApp() { }
