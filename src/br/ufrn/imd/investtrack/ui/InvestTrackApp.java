@@ -1,9 +1,15 @@
 package br.ufrn.imd.investtrack.ui;
 
+import br.ufrn.imd.investtrack.api.ProvedorApiReal;
+import br.ufrn.imd.investtrack.api.ProvedorSimulado;
+import br.ufrn.imd.investtrack.interfaces.ProvedorCotacao;
 import br.ufrn.imd.investtrack.repository.CarteiraRepository;
 import br.ufrn.imd.investtrack.service.CarteiraService;
+import br.ufrn.imd.investtrack.service.MonitorMercadoService;
 
 import java.awt.Color;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
@@ -45,7 +51,7 @@ public final class InvestTrackApp {
 		UIManager.put("TableHeader.foreground", Color.WHITE);
 	}
 
-	// Aplica o tema, cria o repositório e o serviço e abre o dashboard na thread do Swing.
+	// Aplica o tema, cria o repositório e o serviço, abre o dashboard e liga o monitor de cotações.
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(() -> {
 			try {
@@ -55,7 +61,25 @@ public final class InvestTrackApp {
 			}
 			configurarTema();
 			CarteiraRepository repositorio = CarteiraRepository.getInstancia();
-			new DashboardFrame(new CarteiraService(repositorio), repositorio).setVisible(true);
+			MonitorMercadoService monitor = new MonitorMercadoService(escolherProvedor(args, repositorio), repositorio);
+			DashboardFrame janela = new DashboardFrame(new CarteiraService(repositorio), repositorio);
+			// O monitor começa junto com a janela e para quando ela é fechada.
+			janela.addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent evento) {
+					monitor.parar();
+				}
+			});
+			janela.setVisible(true);
+			monitor.iniciar();
 		});
+	}
+
+	// Por padrão usa a internet; com o argumento --simulado usa preços simulados (sem internet).
+	private static ProvedorCotacao escolherProvedor(String[] args, CarteiraRepository repositorio) {
+		if (args.length > 0 && args[0].equals("--simulado")) {
+			return new ProvedorSimulado(repositorio, System.currentTimeMillis());
+		}
+		return new ProvedorApiReal();
 	}
 }

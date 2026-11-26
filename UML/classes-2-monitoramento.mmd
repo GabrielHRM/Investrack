@@ -26,10 +26,10 @@ classDiagram
             - buscarNaAwesome(par: String) double
         }
         class ProvedorSimulado {
-            - precos: Map~String, Double~
+            - VARIACAO_MAXIMA: double$
+            - repositorio: CarteiraRepository
             - aleatorio: Random
-            + ProvedorSimulado(semente: long)
-            + definirPreco(ticker: String, preco: double) void
+            + ProvedorSimulado(repositorio: CarteiraRepository, semente: long)
             + buscarCotacaoAtual(ticker: String) double
         }
     }
@@ -49,6 +49,7 @@ classDiagram
             + setProvedor(provedor: ProvedorCotacao) void
             + iniciar() void
             + parar() void
+            + isRodando() boolean
             + executarCiclo() void
             - notificarObservadores(ticker: String, anterior: double, atual: double) void
         }
@@ -143,11 +144,12 @@ classDiagram
             + getTableCellRendererComponent(...) Component
             # paintComponent(g: Graphics) void
         }
+        class InvestTrackApp {
+            + main(args: String[])$ void
+            - escolherProvedor(args: String[], repositorio: CarteiraRepository)$ ProvedorCotacao
+        }
     }
 
-    class Main {
-        + main(args: String[])$ void
-    }
     class JFrame {
         <<Swing>>
     }
@@ -181,6 +183,7 @@ classDiagram
     %% Observer: os observadores sao criados fora e entram por adicionarObservador()
     MonitorMercadoService "1" o-- "*" ObservadorMercado : observadores
     MonitorMercadoService --> "1" CarteiraRepository : repositorio
+    ProvedorSimulado --> "1" CarteiraRepository : repositorio
 
     %% associacoes (atributos recebidos no construtor)
     DetectorVolatilidade --> "1" ReceptorAlerta : receptor
@@ -202,4 +205,5 @@ classDiagram
     AlertaPrecoAlvo ..> Alerta : cria
     DashboardFrame ..> MiniGraficoRenderer : cria
     ProvedorCotacao ..> CotacaoIndisponivelException : lança
-    Main ..> DashboardFrame : cria e conecta tudo
+    InvestTrackApp ..> DashboardFrame : cria e conecta tudo
+    InvestTrackApp ..> MonitorMercadoService : cria, inicia e para
