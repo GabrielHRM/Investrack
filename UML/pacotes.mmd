@@ -1,5 +1,5 @@
 ---
-title: InvestTrack - Dependência entre pacotes (o Main, que monta tudo, foi omitido)
+title: InvestTrack - Dependência entre pacotes (o InvestTrackApp, que monta tudo, foi omitido)
 ---
 flowchart TD
     ui["ui<br/>DashboardFrame, CarteiraTableModel, MiniGraficoRenderer"]
@@ -28,6 +28,7 @@ flowchart TD
     observer --> interfaces
 
     api --> interfaces
+    api --> repository
     api --> exception
 
     factory --> model

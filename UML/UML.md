@@ -203,10 +203,10 @@ classDiagram
             - buscarNaAwesome(par: String) double
         }
         class ProvedorSimulado {
-            - precos: Map~String, Double~
+            - VARIACAO_MAXIMA: double$
+            - repositorio: CarteiraRepository
             - aleatorio: Random
-            + ProvedorSimulado(semente: long)
-            + definirPreco(ticker: String, preco: double) void
+            + ProvedorSimulado(repositorio: CarteiraRepository, semente: long)
             + buscarCotacaoAtual(ticker: String) double
         }
     }
@@ -226,6 +226,7 @@ classDiagram
             + setProvedor(provedor: ProvedorCotacao) void
             + iniciar() void
             + parar() void
+            + isRodando() boolean
             + executarCiclo() void
             - notificarObservadores(ticker: String, anterior: double, atual: double) void
         }
@@ -320,11 +321,12 @@ classDiagram
             + getTableCellRendererComponent(...) Component
             # paintComponent(g: Graphics) void
         }
+        class InvestTrackApp {
+            + main(args: String[])$ void
+            - escolherProvedor(args: String[], repositorio: CarteiraRepository)$ ProvedorCotacao
+        }
     }
 
-    class Main {
-        + main(args: String[])$ void
-    }
     class JFrame {
         <<Swing>>
     }
@@ -358,6 +360,7 @@ classDiagram
     %% Observer: os observadores sao criados fora e entram por adicionarObservador()
     MonitorMercadoService "1" o-- "*" ObservadorMercado : observadores
     MonitorMercadoService --> "1" CarteiraRepository : repositorio
+    ProvedorSimulado --> "1" CarteiraRepository : repositorio
 
     %% associacoes (atributos recebidos no construtor)
     DetectorVolatilidade --> "1" ReceptorAlerta : receptor
@@ -379,14 +382,15 @@ classDiagram
     AlertaPrecoAlvo ..> Alerta : cria
     DashboardFrame ..> MiniGraficoRenderer : cria
     ProvedorCotacao ..> CotacaoIndisponivelException : lança
-    Main ..> DashboardFrame : cria e conecta tudo
+    InvestTrackApp ..> DashboardFrame : cria e conecta tudo
+    InvestTrackApp ..> MonitorMercadoService : cria, inicia e para
 ```
 
 ## 3. Dependência entre pacotes
 
 As setas seguem uma só direção: `model` só depende de `interfaces` e `exception`, e nenhum pacote
 depende de `ui`. Por isso as regras da carteira e o monitor podem ser testados sem abrir janela.
-O `Main` foi omitido do desenho porque ele conhece quase todos os pacotes só para montar o sistema.
+O `InvestTrackApp` (o `main` do sistema) foi omitido do desenho porque ele conhece quase todos os pacotes só para montar o sistema.
 
 ```mermaid
 flowchart TD
@@ -416,6 +420,7 @@ flowchart TD
     observer --> interfaces
 
     api --> interfaces
+    api --> repository
     api --> exception
 
     factory --> model
@@ -573,12 +578,10 @@ Pontos que não estavam no documento de contexto e foram definidos aqui:
 
 ```
 src/br/ufrn/imd/investtrack/
-  Main.java
-  package-info.java        visão geral das camadas (capa do JavaDoc)
   model/  interfaces/  factory/  repository/  service/  api/  observer/  ui/  exception/
-                           (cada pacote com seu package-info.java)
-src/tests/                 testes unitários
-lib/                       gson.jar e junit-platform-console-standalone.jar
+  ui/InvestTrackApp.java   ponto de entrada (main)
+test/br/ufrn/imd/investtrack/   testes unitários (mesmos pacotes do src)
+lib/                       junit-platform-console-standalone.jar (e o gson.jar quando entrar a brapi)
 bin/                       .class gerados (no .gitignore)
 doc/                       JavaDoc gerado (no .gitignore)
 ```
