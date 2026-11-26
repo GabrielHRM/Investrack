@@ -230,7 +230,7 @@ public final class DashboardFrame extends JFrame {
 		}
 	}
 	// Configura o seletor de tipo com fundo preto e texto branco.
-	private void configurarComboBox(JComboBox<String> combo) {
+	private <T> void configurarComboBox(JComboBox<T> combo) {
 		combo.setUI(new javax.swing.plaf.basic.BasicComboBoxUI());
 		combo.setBackground(FUNDO);
 		combo.setForeground(Color.WHITE);
@@ -249,30 +249,86 @@ public final class DashboardFrame extends JFrame {
 			}
 		});
 	}
-	// Lê os dados do formulário, valida os valores e registra a compra pelo serviço.
+// Exibe um seletor de moedas para cripto e mantém ticker/nome editáveis para ações.
 	private void comprarAtivo() {
 		JComboBox<String> tipo = new JComboBox<>(new String[]{"Ação", "Criptomoeda"});
 		configurarComboBox(tipo);
-		JTextField ticker = new JTextField(16);
-		JTextField nome = new JTextField(16);
+		tipo.setSelectedIndex(1);
+
+		JComboBox<MoedaDisponivel> moeda = new JComboBox<>(new MoedaDisponivel[]{
+				new MoedaDisponivel("Bitcoin", "BTCBRL"),
+				new MoedaDisponivel("Ethereum", "ETHBRL"),
+				new MoedaDisponivel("Tether", "USDTBRL"),
+				new MoedaDisponivel("USD Coin", "USDCBRL")
+		});
+		configurarComboBox(moeda);
+
+		JComboBox<AcaoDisponivel> acao = new JComboBox<>(new AcaoDisponivel[]{
+			new AcaoDisponivel("Petrobras", "PETR4"),
+			new AcaoDisponivel("Vale", "VALE3"),
+			new AcaoDisponivel("Itaú Unibanco", "ITUB4"),
+			new AcaoDisponivel("Taesa", "TAEE11")
+		});
+		configurarComboBox(acao);
 		JTextField quantidade = new JTextField(16);
 		JTextField preco = new JTextField(16);
+
+		JPanel campoAcao = new JPanel(new BorderLayout());
+		campoAcao.setOpaque(false);
+		campoAcao.add(acao, BorderLayout.CENTER);
+
+		JPanel campoMoeda = new JPanel(new BorderLayout());
+		campoMoeda.setOpaque(false);
+		campoMoeda.add(moeda, BorderLayout.CENTER);
+
+		CardLayout cartoes = new CardLayout();
+		JPanel seletorAtivo = new JPanel(cartoes);
+		seletorAtivo.setOpaque(false);
+		seletorAtivo.add(campoAcao, "acao");
+		seletorAtivo.add(campoMoeda, "cripto");
+		cartoes.show(seletorAtivo, "cripto");
+		tipo.addActionListener(evento ->
+				cartoes.show(seletorAtivo, tipo.getSelectedIndex() == 0 ? "acao" : "cripto"));
+
 		JPanel formulario = new JPanel(new GridLayout(0, 2, 8, 8));
-		formulario.add(new JLabel("Tipo:")); formulario.add(tipo);
-		formulario.add(new JLabel("Ticker (PETR4 ou BTCBRL):")); formulario.add(ticker);
-		formulario.add(new JLabel("Nome:")); formulario.add(nome);
-		formulario.add(new JLabel("Quantidade:")); formulario.add(quantidade);
-		formulario.add(new JLabel("Preço por unidade (R$):")); formulario.add(preco);
+		formulario.add(new JLabel("Tipo:"));
+		formulario.add(tipo);
+		formulario.add(new JLabel("Ativo:"));
+		formulario.add(seletorAtivo);
+		formulario.add(new JLabel("Quantidade:"));
+		formulario.add(quantidade);
+		formulario.add(new JLabel("Preço de compra por unidade (R$):"));
+		formulario.add(preco);
 
 		while (true) {
-			if (confirmarCompra(formulario) != JOptionPane.OK_OPTION) return;
+			if (confirmarCompra(formulario) != JOptionPane.OK_OPTION) {
+				return;
+			}
 			try {
-				if (ticker.getText().isBlank() || nome.getText().isBlank()) {
-					throw new IllegalArgumentException("Preencha o ticker e o nome do ativo.");
+				TipoAtivo tipoAtivo;
+				String ticker;
+				String nome;
+				if (tipo.getSelectedIndex() == 0) {
+					AcaoDisponivel selecionada = (AcaoDisponivel) acao.getSelectedItem();
+					if (selecionada == null) {
+						throw new IllegalArgumentException("Selecione uma ação.");
+					}
+					tipoAtivo = TipoAtivo.ACAO;
+					ticker = selecionada.ticker;
+					nome = selecionada.nome;
+				} else {
+					MoedaDisponivel selecionada = (MoedaDisponivel) moeda.getSelectedItem();
+					if (selecionada == null) {
+						throw new IllegalArgumentException("Selecione uma criptomoeda.");
+					}
+					tipoAtivo = TipoAtivo.CRIPTOMOEDA;
+					ticker = selecionada.ticker;
+					nome = selecionada.nome;
 				}
-				TipoAtivo tipoAtivo = tipo.getSelectedIndex() == 0 ? TipoAtivo.ACAO : TipoAtivo.CRIPTOMOEDA;
-				service.comprar(tipoAtivo, ticker.getText().trim(), nome.getText().trim(),
-						lerNumero(quantidade.getText(), "quantidade"), lerNumero(preco.getText(), "preço"));
+
+				service.comprar(tipoAtivo, ticker, nome,
+						lerNumero(quantidade.getText(), "quantidade"),
+						lerNumero(preco.getText(), "preço"));
 				atualizarCarteira();
 				mostrarMensagem("Compra registrada com sucesso.", "Compra", JOptionPane.INFORMATION_MESSAGE);
 				return;
@@ -349,6 +405,37 @@ public final class DashboardFrame extends JFrame {
 			return numero;
 		} catch (NumberFormatException erro) {
 			throw new IllegalArgumentException("Informe " + campo + " como número maior que zero.");
+		}
+	}
+
+/** Nome amigável e ticker BRL usados no seletor de criptomoedas. */
+	/** Nome de exibição e ticker de uma ação disponível no seletor da compra. */
+	private static final class AcaoDisponivel {
+		private final String nome;
+		private final String ticker;
+
+		private AcaoDisponivel(String nome, String ticker) {
+			this.nome = nome;
+			this.ticker = ticker;
+		}
+
+		@Override
+		public String toString() {
+			return nome + " (" + ticker + ")";
+		}
+	}
+	private static final class MoedaDisponivel {
+		private final String nome;
+		private final String ticker;
+
+		private MoedaDisponivel(String nome, String ticker) {
+			this.nome = nome;
+			this.ticker = ticker;
+		}
+
+		@Override
+		public String toString() {
+			return nome + " (" + ticker + ")";
 		}
 	}
 
